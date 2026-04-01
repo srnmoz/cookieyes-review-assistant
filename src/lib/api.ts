@@ -18,24 +18,27 @@ export interface CreateReviewInput {
 }
 
 export async function createReview(input: CreateReviewInput): Promise<string> {
+  const insertData: Record<string, unknown> = {
+    title: input.title,
+    article_content: input.articleContent,
+    content_source: input.contentSource,
+    file_name: input.fileName || null,
+    icp_selection: input.icpSelection,
+    primary_keyword: input.primaryKeyword || null,
+    secondary_keywords: input.secondaryKeywords?.length ? input.secondaryKeywords : null,
+    search_intent: input.searchIntent || null,
+    funnel_stage: input.funnelStage || null,
+    cta_goal: input.ctaGoal || null,
+    competitor_urls: input.competitorUrls?.length ? input.competitorUrls : null,
+    competitor_notes: input.competitorNotes || null,
+    reviewer_notes: input.reviewerNotes || null,
+    status: "queued",
+  };
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await supabase
     .from("article_reviews")
-    .insert({
-      title: input.title,
-      article_content: input.articleContent,
-      content_source: input.contentSource,
-      file_name: input.fileName,
-      icp_selection: input.icpSelection as unknown as Record<string, unknown>,
-      primary_keyword: input.primaryKeyword || null,
-      secondary_keywords: input.secondaryKeywords?.length ? input.secondaryKeywords : null,
-      search_intent: input.searchIntent || null,
-      funnel_stage: input.funnelStage || null,
-      cta_goal: input.ctaGoal || null,
-      competitor_urls: input.competitorUrls?.length ? input.competitorUrls : null,
-      competitor_notes: input.competitorNotes || null,
-      reviewer_notes: input.reviewerNotes || null,
-      status: "queued",
-    })
+    .insert(insertData as any)
     .select("id")
     .single();
 
