@@ -1,0 +1,106 @@
+import { supabase } from "@/integrations/supabase/client";
+import type { ReviewResult, IcpSelection } from "./types";
+
+export interface CreateReviewInput {
+  title: string;
+  articleContent: string;
+  contentSource: "upload" | "paste";
+  fileName?: string;
+  icpSelection: IcpSelection;
+  primaryKeyword?: string;
+  secondaryKeywords?: string[];
+  searchIntent?: string;
+  funnelStage?: string;
+  ctaGoal?: string;
+  competitorUrls?: string[];
+  competitorNotes?: string;
+  reviewerNotes?: string;
+}
+
+export async function createReview(input: CreateReviewInput): Promise<string> {
+  const { data, error } = await supabase
+    .from("article_reviews")
+    .insert({
+      title: input.title,
+      article_content: input.articleContent,
+      content_source: input.contentSource,
+      file_name: input.fileName,
+      icp_selection: input.icpSelection as unknown as Record<string, unknown>,
+      primary_keyword: input.primaryKeyword || null,
+      secondary_keywords: input.secondaryKeywords?.length ? input.secondaryKeywords : null,
+      search_intent: input.searchIntent || null,
+      funnel_stage: input.funnelStage || null,
+      cta_goal: input.ctaGoal || null,
+      competitor_urls: input.competitorUrls?.length ? input.competitorUrls : null,
+      competitor_notes: input.competitorNotes || null,
+      reviewer_notes: input.reviewerNotes || null,
+      status: "queued",
+    })
+    .select("id")
+    .single();
+
+  if (error) throw new Error(error.message);
+  return data.id;
+}
+
+export async function triggerReview(reviewId: string): Promise<void> {
+  const { error } = await supabase.functions.invoke("review-article", {
+    body: { reviewId },
+  });
+  if (error) throw new Error(error.message);
+}
+
+export interface ReviewRow {
+  id: string;
+  title: string;
+  status: string;
+  review_result: ReviewResult | null;
+  icp_selection: IcpSelection;
+  created_at: string;
+  error_message: string | null;
+}
+
+export async function fetchReview(id: string): Promise<ReviewRow | null> {
+  const { data, error } = await supabase
+    .from("article_reviews")
+    .select("*")
+    .eq("id", id)
+    .single();
+  if (error) return null;
+  return data as unknown as ReviewRow;
+}
+
+export async function fetchAllReviews(): Promise<ReviewRow[]> {
+  const { data, error } = await supabase
+    .from("article_reviews")
+    .select("*")
+    .order("created_at", { ascending: false });
+  if (error) return [];
+  return (data || []) as unknown as ReviewRow[];
+}
+
+export function mapRowToReviewResult(row: ReviewRow): ReviewResult | null {
+  if (!row.review_result) return null;
+  const r = row.review_result;
+  return {
+    id: row.id,
+    articleTitle: row.title,
+    overallScore: r.overallScore ?? 0,
+    publishReadiness: r.publishReadiness ?? "not_ready",
+    editorialVerdict: r.editorialVerdict ?? "",
+    strengths: r.strengths ?? [],
+    weaknesses: r.weaknesses ?? [],
+    inferredInputs: r.inferredInputs ?? {},
+    categoryScores: r.categoryScores ?? [],
+    issues: r.issues ?? [],
+    styleGuideViolations: r.styleGuideViolations ?? [],
+    seoRecommendations: r.seoRecommendations ?? { titleSuggestions: [], faqIdeas: [], schemaOpportunities: [], internalLinkingSuggestions: [] },
+    geoRecommendations: r.geoRecommendations ?? { missingSummaryBlocks: [], missingFaqs: [], missingDefinitions: [], missingComparisons: [], missingAnswerFirst: [], missingQuoteFriendly: [] },
+    competitorAnalysis: r.competitorAnalysis,
+    actionPlan: r.actionPlan ?? [],
+    rewriteSuggestions: r.rewriteSuggestions ?? [],
+    status: "draft_review",
+    createdAt: row.created_at,
+    icpSelection: row.icp_selection,
+  };
+}
