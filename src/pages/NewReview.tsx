@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import type { IcpSelection, SearchIntent, FunnelStage } from '@/lib/types';
+import { createReview, triggerReview } from '@/lib/api';
 import { Upload, FileText, Type, X, Loader2 } from 'lucide-react';
 
 export default function NewReview() {
@@ -53,18 +54,75 @@ export default function NewReview() {
     if (file) setUploadedFile(file);
   };
 
+  const readFileAsText = async (file: File): Promise<string> => {
+    if (file.type === 'text/plain' || file.name.endsWith('.txt')) {
+      return file.text();
+    }
+    // For PDF/DOCX, read as text for now (basic extraction)
+    // In production, you'd use a proper parser
+    return file.text();
+  };
+
   const hasValidInput = title && (uploadedFile || articleText) && (icpSelection.digitalAgencies || icpSelection.allRegularUsers || icpSelection.regularUserSubtypes.length > 0);
 
   const handleSubmit = async () => {
     if (!hasValidInput) return;
     setIsSubmitting(true);
 
-    // Simulate processing — will be replaced with real AI call
-    setTimeout(() => {
+    try {
+      let content = articleText;
+      let fileName: string | undefined;
+
+      if (inputMethod === 'upload' && uploadedFile) {
+        content = await readFileAsText(uploadedFile);
+        fileName = uploadedFile.name;
+      }
+
+      if (!content.trim()) {
+        toast({ title: 'Empty content', description: 'The article content is empty. Please paste text or upload a valid file.', variant: 'destructive' });
+        setIsSubmitting(false);
+        return;
+      }
+
+      const secondaryKws = secondaryKeywords
+        .split(',')
+        .map((k) => k.trim())
+        .filter(Boolean);
+      const compUrls = competitorUrls
+        .split(/[,\n]/)
+        .map((u) => u.trim())
+        .filter(Boolean);
+
+      const reviewId = await createReview({
+        title,
+        articleContent: content,
+        contentSource: inputMethod,
+        fileName,
+        icpSelection,
+        primaryKeyword: primaryKeyword || undefined,
+        secondaryKeywords: secondaryKws.length ? secondaryKws : undefined,
+        searchIntent: searchIntent || undefined,
+        funnelStage: funnelStage || undefined,
+        ctaGoal: ctaGoal || undefined,
+        competitorUrls: compUrls.length ? compUrls : undefined,
+        competitorNotes: competitorNotes || undefined,
+        reviewerNotes: reviewerNotes || undefined,
+      });
+
+      // Fire and forget the AI processing — navigate immediately to the review page
+      // which will poll for completion
+      triggerReview(reviewId).catch((err) => {
+        console.error('Review trigger error:', err);
+      });
+
+      navigate(`/review/${reviewId}`);
+      toast({ title: 'Review submitted', description: 'Your article is being analyzed by AI...' });
+    } catch (err) {
+      console.error(err);
+      toast({ title: 'Error', description: 'Failed to submit review. Please try again.', variant: 'destructive' });
+    } finally {
       setIsSubmitting(false);
-      navigate('/review/1');
-      toast({ title: 'Review complete', description: 'Your article has been analyzed.' });
-    }, 2000);
+    }
   };
 
   return (
@@ -220,7 +278,7 @@ export default function NewReview() {
           <Button variant="outline" onClick={() => navigate('/')}>Cancel</Button>
           <Button onClick={handleSubmit} disabled={!hasValidInput || isSubmitting}>
             {isSubmitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-            {isSubmitting ? 'Analyzing...' : 'Start Review'}
+            {isSubmitting ? 'Submitting...' : 'Start Review'}
           </Button>
         </div>
       </div>

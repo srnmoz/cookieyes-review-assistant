@@ -5,14 +5,15 @@ import { Button } from '@/components/ui/button';
 import { ScoreCircle, ScoreBar } from '@/components/ScoreCircle';
 import { SeverityBadge, ReadinessBadge, StatusBadge } from '@/components/SeverityBadge';
 import { sampleReviews } from '@/lib/sample-data';
+import { fetchReview, mapRowToReviewResult } from '@/lib/api';
 import type { ReviewResult, Severity } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import {
-  ArrowLeft, Copy, Download, ChevronDown, ChevronRight,
+  ArrowLeft, Copy, ChevronDown, ChevronRight,
   CheckCircle2, XCircle, Lightbulb, Target, Search, BarChart3,
-  Brain, Eye, BookOpen, Shield, Type, Swords, Zap, FileText,
+  Brain, Eye, BookOpen, Shield, Type, Swords, Zap, FileText, Loader2,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   Collapsible,
   CollapsibleContent,
@@ -96,8 +97,87 @@ function IssueCard({ issue }: { issue: ReviewResult['issues'][0] }) {
 
 export default function ReviewDetail() {
   const { id } = useParams();
-  const review = sampleReviews.find((r) => r.id === id);
+  const [review, setReview] = useState<ReviewResult | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [status, setStatus] = useState<string>('loading');
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [activeSection, setActiveSection] = useState('summary');
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    if (!id) return;
+
+    // First check sample data
+    const sample = sampleReviews.find((r) => r.id === id);
+    if (sample) {
+      setReview(sample);
+      setStatus('completed');
+      setLoading(false);
+      return;
+    }
+
+    // Otherwise poll the database
+    const poll = async () => {
+      const row = await fetchReview(id);
+      if (!row) {
+        setStatus('not_found');
+        setLoading(false);
+        return;
+      }
+
+      setStatus(row.status);
+
+      if (row.status === 'completed') {
+        const mapped = mapRowToReviewResult(row);
+        if (mapped) setReview(mapped);
+        setLoading(false);
+        if (pollRef.current) clearInterval(pollRef.current);
+      } else if (row.status === 'failed') {
+        setErrorMessage(row.error_message);
+        setLoading(false);
+        if (pollRef.current) clearInterval(pollRef.current);
+      }
+    };
+
+    poll();
+    pollRef.current = setInterval(poll, 3000);
+
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+    };
+  }, [id]);
+
+  if (loading || status === 'queued' || status === 'processing') {
+    return (
+      <AppLayout>
+        <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+          <Loader2 className="w-10 h-10 text-primary animate-spin" />
+          <div className="text-center">
+            <h2 className="text-lg font-semibold text-foreground">Analyzing your article...</h2>
+            <p className="text-sm text-muted-foreground mt-1">
+              {status === 'queued' ? 'Queued for review' : 'AI is reviewing your content'}
+            </p>
+            <p className="text-xs text-muted-foreground mt-2">This may take 30-60 seconds</p>
+          </div>
+        </div>
+      </AppLayout>
+    );
+  }
+
+  if (status === 'failed') {
+    return (
+      <AppLayout>
+        <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+          <XCircle className="w-10 h-10 text-destructive" />
+          <div className="text-center">
+            <h2 className="text-lg font-semibold text-foreground">Review Failed</h2>
+            <p className="text-sm text-muted-foreground mt-1">{errorMessage || 'An unexpected error occurred.'}</p>
+          </div>
+          <Button asChild><Link to="/new-review">Try Again</Link></Button>
+        </div>
+      </AppLayout>
+    );
+  }
 
   if (!review) {
     return (
