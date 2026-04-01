@@ -14,7 +14,72 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      article_reviews: {
+        Row: {
+          article_content: string
+          competitor_notes: string | null
+          competitor_urls: string[] | null
+          content_source: string
+          created_at: string
+          cta_goal: string | null
+          error_message: string | null
+          file_name: string | null
+          funnel_stage: string | null
+          icp_selection: Json
+          id: string
+          primary_keyword: string | null
+          review_result: Json | null
+          reviewer_notes: string | null
+          search_intent: string | null
+          secondary_keywords: string[] | null
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          article_content: string
+          competitor_notes?: string | null
+          competitor_urls?: string[] | null
+          content_source?: string
+          created_at?: string
+          cta_goal?: string | null
+          error_message?: string | null
+          file_name?: string | null
+          funnel_stage?: string | null
+          icp_selection?: Json
+          id?: string
+          primary_keyword?: string | null
+          review_result?: Json | null
+          reviewer_notes?: string | null
+          search_intent?: string | null
+          secondary_keywords?: string[] | null
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          article_content?: string
+          competitor_notes?: string | null
+          competitor_urls?: string[] | null
+          content_source?: string
+          created_at?: string
+          cta_goal?: string | null
+          error_message?: string | null
+          file_name?: string | null
+          funnel_stage?: string | null
+          icp_selection?: Json
+          id?: string
+          primary_keyword?: string | null
+          review_result?: Json | null
+          reviewer_notes?: string | null
+          search_intent?: string | null
+          secondary_keywords?: string[] | null
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
