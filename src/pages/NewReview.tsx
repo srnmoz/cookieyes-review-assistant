@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import type { IcpSelection, SearchIntent, FunnelStage } from '@/lib/types';
 import { createReview, triggerReview } from '@/lib/api';
+import { isSupportedArticleFile, parseArticleFile } from '@/lib/document-parser';
 import { Upload, FileText, Type, X, Loader2 } from 'lucide-react';
 
 export default function NewReview() {
@@ -42,7 +43,7 @@ export default function NewReview() {
   const handleFileDrop = (e: React.DragEvent) => {
     e.preventDefault();
     const file = e.dataTransfer.files[0];
-    if (file && (file.type === 'application/pdf' || file.name.endsWith('.docx') || file.type === 'text/plain')) {
+    if (file && isSupportedArticleFile(file)) {
       setUploadedFile(file);
     } else {
       toast({ title: 'Invalid file', description: 'Please upload a PDF, DOCX, or TXT file.', variant: 'destructive' });
@@ -51,16 +52,15 @@ export default function NewReview() {
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) setUploadedFile(file);
-  };
+    if (!file) return;
 
-  const readFileAsText = async (file: File): Promise<string> => {
-    if (file.type === 'text/plain' || file.name.endsWith('.txt')) {
-      return file.text();
+    if (isSupportedArticleFile(file)) {
+      setUploadedFile(file);
+      return;
     }
-    // For PDF/DOCX, read as text for now (basic extraction)
-    // In production, you'd use a proper parser
-    return file.text();
+
+    e.target.value = '';
+    toast({ title: 'Invalid file', description: 'Please upload a PDF, DOCX, or TXT file.', variant: 'destructive' });
   };
 
   const hasValidInput = title && (uploadedFile || articleText) && (icpSelection.digitalAgencies || icpSelection.allRegularUsers || icpSelection.regularUserSubtypes.length > 0);
@@ -74,7 +74,7 @@ export default function NewReview() {
       let fileName: string | undefined;
 
       if (inputMethod === 'upload' && uploadedFile) {
-        content = await readFileAsText(uploadedFile);
+        content = await parseArticleFile(uploadedFile);
         fileName = uploadedFile.name;
       }
 
