@@ -117,9 +117,9 @@ export default function NewReview() {
 
       navigate(`/review/${reviewId}`);
       toast({ title: 'Review submitted', description: 'Your article is being analyzed by AI...' });
-    } catch (err) {
-      console.error(err);
-      toast({ title: 'Error', description: 'Failed to submit review. Please try again.', variant: 'destructive' });
+    } catch (err: any) {
+      console.error("Submit error:", err, err?.message);
+      toast({ title: 'Error', description: `Failed to submit review: ${err?.message || 'Unknown error'}`, variant: 'destructive' });
     } finally {
       setIsSubmitting(false);
     }

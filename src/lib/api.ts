@@ -42,7 +42,10 @@ export async function createReview(input: CreateReviewInput): Promise<string> {
     .select("id")
     .single();
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    console.error("createReview error:", error);
+    throw new Error(error.message);
+  }
   return data.id;
 }
 
