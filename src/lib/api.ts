@@ -51,11 +51,19 @@ export async function createReview(input: CreateReviewInput): Promise<string> {
   return data.id;
 }
 
-export async function triggerReview(reviewId: string): Promise<void> {
-  const { error } = await supabase.functions.invoke("review-article", {
+export interface TriggerReviewResponse {
+  success: boolean;
+  reviewId: string;
+  status: string;
+  message?: string;
+}
+
+export async function triggerReview(reviewId: string): Promise<TriggerReviewResponse> {
+  const { data, error } = await supabase.functions.invoke("review-article", {
     body: { reviewId },
   });
   if (error) throw new Error(error.message);
+  return (data ?? { success: true, reviewId, status: "processing" }) as TriggerReviewResponse;
 }
 
 export interface ReviewRow {
