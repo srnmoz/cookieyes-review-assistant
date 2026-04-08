@@ -1,10 +1,32 @@
-import { createClient } from "npm:@supabase/supabase-js@2";
+import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
+
+declare const EdgeRuntime: {
+  waitUntil: (promise: Promise<unknown>) => void;
+};
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
+
+const AI_GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
+const AI_MODEL = "google/gemini-3-flash-preview";
+
+interface ReviewRow {
+  id: string;
+  title: string;
+  article_content: string;
+  icp_selection: Record<string, unknown>;
+  primary_keyword: string | null;
+  secondary_keywords: string[] | null;
+  search_intent: string | null;
+  funnel_stage: string | null;
+  cta_goal: string | null;
+  competitor_notes: string | null;
+  reviewer_notes: string | null;
+  status: string;
+}
 
 const STYLE_GUIDE = `CookieYes Content Style Guide — Blog Content Guidelines
 
@@ -125,6 +147,54 @@ LEGAL SENSITIVITY: Flag any risky legal claims. CookieYes content touches GDPR/p
 Be direct, editorial, specific. Give exact examples. Prioritise practical fixes. No generic feedback.`;
 }
 
+function createAdminClient() {
+  return createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+  );
+}
+
+function jsonResponse(body: Record<string, unknown>, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
+async function fetchReview(
+  supabase: SupabaseClient,
+  reviewId: string,
+): Promise<ReviewRow | null> {
+  const { data, error } = await supabase
+    .from("article_reviews")
+    .select("*")
+    .eq("id", reviewId)
+    .single();
+
+  if (error || !data) {
+    console.error("Failed to fetch review", reviewId, error);
+    return null;
+  }
+
+  return data as ReviewRow;
+}
+
+async function updateReviewRecord(
+  supabase: SupabaseClient,
+  reviewId: string,
+  updates: Record<string, unknown>,
+) {
+  const { error } = await supabase
+    .from("article_reviews")
+    .update({ ...updates, updated_at: new Date().toISOString() })
+    .eq("id", reviewId);
+
+  if (error) {
+    console.error("Failed to update review", reviewId, error);
+    throw error;
+  }
+}
+
 function buildUserPrompt(input: {
   title: string;
   articleContent: string;
@@ -160,6 +230,74 @@ function buildUserPrompt(input: {
 
   prompt += `\nARTICLE CONTENT:\n${input.articleContent}`;
   return prompt;
+}
+
+async function runStructuredReview(review: ReviewRow) {
+  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+
+  if (!LOVABLE_API_KEY) {
+    throw new Error("LOVABLE_API_KEY not configured");
+  }
+
+  const aiResponse = await fetch(AI_GATEWAY_URL, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${LOVABLE_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: AI_MODEL,
+      messages: [
+        { role: "system", content: buildSystemPrompt() },
+        {
+          role: "user",
+          content: buildUserPrompt({
+            title: review.title,
+            articleContent: review.article_content,
+            icpSelection: review.icp_selection,
+            primaryKeyword: review.primary_keyword ?? undefined,
+            secondaryKeywords: review.secondary_keywords ?? undefined,
+            searchIntent: review.search_intent ?? undefined,
+            funnelStage: review.funnel_stage ?? undefined,
+            ctaGoal: review.cta_goal ?? undefined,
+            competitorNotes: review.competitor_notes ?? undefined,
+            reviewerNotes: review.reviewer_notes ?? undefined,
+          }),
+        },
+      ],
+      tools: [REVIEW_TOOL],
+      tool_choice: { type: "function", function: { name: "submit_review" } },
+    }),
+  });
+
+  if (!aiResponse.ok) {
+    const errText = await aiResponse.text();
+    console.error("AI gateway error:", aiResponse.status, errText);
+
+    if (aiResponse.status === 429) {
+      throw new Error("Rate limited — please try again in a moment.");
+    }
+
+    if (aiResponse.status === 402) {
+      throw new Error("AI credits exhausted — please add funds.");
+    }
+
+    throw new Error(`AI error (${aiResponse.status})`);
+  }
+
+  const aiData = await aiResponse.json();
+  const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
+
+  if (!toolCall?.function?.arguments) {
+    throw new Error("AI returned unexpected format");
+  }
+
+  try {
+    return JSON.parse(toolCall.function.arguments);
+  } catch (error) {
+    console.error("Failed to parse AI tool response", error, toolCall.function.arguments);
+    throw new Error("AI returned invalid review data");
+  }
 }
 
 const REVIEW_TOOL = {
@@ -295,144 +433,79 @@ const REVIEW_TOOL = {
   },
 };
 
+async function processReviewInBackground(reviewId: string) {
+  const supabase = createAdminClient();
+
+  try {
+    const review = await fetchReview(supabase, reviewId);
+
+    if (!review) {
+      throw new Error("Review not found");
+    }
+
+    const reviewResult = await runStructuredReview(review);
+
+    await updateReviewRecord(supabase, reviewId, {
+      status: "completed",
+      review_result: reviewResult,
+      error_message: null,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    console.error("review-article background error:", reviewId, error);
+
+    await updateReviewRecord(supabase, reviewId, {
+      status: "failed",
+      error_message: message,
+    });
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { reviewId } = await req.json();
+    if (req.method !== "POST") {
+      return jsonResponse({ error: "Method not allowed" }, 405);
+    }
+
+    const body = await req.json().catch(() => null);
+    const reviewId = typeof body?.reviewId === "string" ? body.reviewId.trim() : "";
+
     if (!reviewId) {
-      return new Response(JSON.stringify({ error: "reviewId is required" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return jsonResponse({ error: "reviewId is required" }, 400);
     }
 
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    const supabase = createAdminClient();
+    const review = await fetchReview(supabase, reviewId);
+
+    if (!review) {
+      return jsonResponse({ error: "Review not found" }, 404);
+    }
+
+    if (review.status === "completed") {
+      return jsonResponse({ success: true, reviewId, status: "completed", message: "Review already completed" });
+    }
+
+    if (review.status === "processing") {
+      return jsonResponse({ success: true, reviewId, status: "processing", message: "Review is already processing" }, 202);
+    }
+
+    await updateReviewRecord(supabase, reviewId, {
+      status: "processing",
+      error_message: null,
+    });
+
+    EdgeRuntime.waitUntil(processReviewInBackground(reviewId));
+
+    return jsonResponse(
+      { success: true, reviewId, status: "processing", message: "Review processing started" },
+      202,
     );
-
-    // Fetch the review record
-    const { data: review, error: fetchErr } = await supabase
-      .from("article_reviews")
-      .select("*")
-      .eq("id", reviewId)
-      .single();
-
-    if (fetchErr || !review) {
-      return new Response(JSON.stringify({ error: "Review not found" }), {
-        status: 404,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // Mark as processing
-    await supabase
-      .from("article_reviews")
-      .update({ status: "processing", updated_at: new Date().toISOString() })
-      .eq("id", reviewId);
-
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      await supabase
-        .from("article_reviews")
-        .update({ status: "failed", error_message: "LOVABLE_API_KEY not configured", updated_at: new Date().toISOString() })
-        .eq("id", reviewId);
-      return new Response(JSON.stringify({ error: "API key not configured" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // Call AI
-    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          { role: "system", content: buildSystemPrompt() },
-          {
-            role: "user",
-            content: buildUserPrompt({
-              title: review.title,
-              articleContent: review.article_content,
-              icpSelection: review.icp_selection,
-              primaryKeyword: review.primary_keyword,
-              secondaryKeywords: review.secondary_keywords,
-              searchIntent: review.search_intent,
-              funnelStage: review.funnel_stage,
-              ctaGoal: review.cta_goal,
-              competitorNotes: review.competitor_notes,
-              reviewerNotes: review.reviewer_notes,
-            }),
-          },
-        ],
-        tools: [REVIEW_TOOL],
-        tool_choice: { type: "function", function: { name: "submit_review" } },
-      }),
-    });
-
-    if (!aiResponse.ok) {
-      const errText = await aiResponse.text();
-      console.error("AI gateway error:", aiResponse.status, errText);
-
-      const errorMsg = aiResponse.status === 429
-        ? "Rate limited — please try again in a moment."
-        : aiResponse.status === 402
-          ? "AI credits exhausted — please add funds."
-          : `AI error (${aiResponse.status})`;
-
-      await supabase
-        .from("article_reviews")
-        .update({ status: "failed", error_message: errorMsg, updated_at: new Date().toISOString() })
-        .eq("id", reviewId);
-
-      return new Response(JSON.stringify({ error: errorMsg }), {
-        status: aiResponse.status,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const aiData = await aiResponse.json();
-    const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
-
-    if (!toolCall?.function?.arguments) {
-      await supabase
-        .from("article_reviews")
-        .update({ status: "failed", error_message: "AI returned unexpected format", updated_at: new Date().toISOString() })
-        .eq("id", reviewId);
-      return new Response(JSON.stringify({ error: "AI returned unexpected format" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const reviewResult = JSON.parse(toolCall.function.arguments);
-
-    // Save result
-    await supabase
-      .from("article_reviews")
-      .update({
-        status: "completed",
-        review_result: reviewResult,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", reviewId);
-
-    return new Response(JSON.stringify({ success: true, reviewId }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
   } catch (e) {
-    console.error("review-article error:", e);
-    return new Response(
-      JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    console.error("review-article request error:", e);
+    return jsonResponse({ error: e instanceof Error ? e.message : "Unknown error" }, 500);
   }
 });

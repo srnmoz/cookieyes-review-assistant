@@ -70,6 +70,7 @@ export default function NewReview() {
     setIsSubmitting(true);
 
     try {
+      let reviewId: string | null = null;
       let content = articleText;
       let fileName: string | undefined;
 
@@ -93,7 +94,7 @@ export default function NewReview() {
         .map((u) => u.trim())
         .filter(Boolean);
 
-      const reviewId = await createReview({
+      reviewId = await createReview({
         title,
         articleContent: content,
         contentSource: inputMethod,
@@ -109,14 +110,10 @@ export default function NewReview() {
         reviewerNotes: reviewerNotes || undefined,
       });
 
-      // Fire and forget the AI processing — navigate immediately to the review page
-      // which will poll for completion
-      triggerReview(reviewId).catch((err) => {
-        console.error('Review trigger error:', err);
-      });
+      await triggerReview(reviewId);
 
       navigate(`/review/${reviewId}`);
-      toast({ title: 'Review submitted', description: 'Your article is being analyzed by AI...' });
+      toast({ title: 'Review submitted', description: 'Analysis started. Large articles can take several minutes.' });
     } catch (err: any) {
       console.error("Submit error:", err, err?.message);
       toast({ title: 'Error', description: `Failed to submit review: ${err?.message || 'Unknown error'}`, variant: 'destructive' });

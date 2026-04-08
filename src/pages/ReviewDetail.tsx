@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { ScoreCircle, ScoreBar } from '@/components/ScoreCircle';
 import { SeverityBadge, ReadinessBadge, StatusBadge } from '@/components/SeverityBadge';
 import { sampleReviews } from '@/lib/sample-data';
-import { fetchReview, mapRowToReviewResult } from '@/lib/api';
+import { fetchReview, mapRowToReviewResult, triggerReview } from '@/lib/api';
 import type { ReviewResult, Severity } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import {
@@ -103,6 +103,7 @@ export default function ReviewDetail() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [activeSection, setActiveSection] = useState('summary');
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const hasTriggeredQueuedReviewRef = useRef(false);
 
   useEffect(() => {
     if (!id) return;
@@ -126,6 +127,13 @@ export default function ReviewDetail() {
       }
 
       setStatus(row.status);
+
+      if (row.status === 'queued' && !hasTriggeredQueuedReviewRef.current) {
+        hasTriggeredQueuedReviewRef.current = true;
+        triggerReview(id).catch((err) => {
+          console.error('Review trigger error:', err);
+        });
+      }
 
       if (row.status === 'completed') {
         const mapped = mapRowToReviewResult(row);
@@ -157,7 +165,7 @@ export default function ReviewDetail() {
             <p className="text-sm text-muted-foreground mt-1">
               {status === 'queued' ? 'Queued for review' : 'AI is reviewing your content'}
             </p>
-            <p className="text-xs text-muted-foreground mt-2">This may take 30-60 seconds</p>
+            <p className="text-xs text-muted-foreground mt-2">Large articles can take several minutes. This page refreshes automatically.</p>
           </div>
         </div>
       </AppLayout>
