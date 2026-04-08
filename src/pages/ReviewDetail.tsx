@@ -13,7 +13,16 @@ import {
   CheckCircle2, XCircle, Lightbulb, Target, Search, BarChart3,
   Brain, Eye, BookOpen, Shield, Type, Swords, Zap, FileText, Loader2,
 } from 'lucide-react';
+import { Download, Share2, Printer, FileJson } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
+import { downloadMarkdown, downloadJson, copyShareLink } from '@/lib/report-export';
+import { useToast } from '@/hooks/use-toast';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import {
   Collapsible,
   CollapsibleContent,
@@ -104,6 +113,7 @@ export default function ReviewDetail() {
   const [activeSection, setActiveSection] = useState('summary');
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const hasTriggeredQueuedReviewRef = useRef(false);
+  const { toast } = useToast();
 
   useEffect(() => {
     if (!id) return;
@@ -213,6 +223,39 @@ export default function ReviewDetail() {
           <Button variant="ghost" size="sm" asChild className="mb-4 -ml-2">
             <Link to="/"><ArrowLeft className="w-3.5 h-3.5 mr-1" /> Back</Link>
           </Button>
+
+          {review && (
+            <div className="mb-4 space-y-1">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="w-full justify-start gap-2 text-xs">
+                    <Download className="w-3.5 h-3.5" /> Download
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start">
+                  <DropdownMenuItem onClick={() => { downloadMarkdown(review); toast({ title: 'Downloaded', description: 'Markdown report saved' }); }}>
+                    <FileText className="w-3.5 h-3.5 mr-2" /> Markdown (.md)
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => { downloadJson(review); toast({ title: 'Downloaded', description: 'JSON report saved' }); }}>
+                    <FileJson className="w-3.5 h-3.5 mr-2" /> JSON (.json)
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => window.print()}>
+                    <Printer className="w-3.5 h-3.5 mr-2" /> Print / Save as PDF
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full justify-start gap-2 text-xs"
+                onClick={() => { copyShareLink(); toast({ title: 'Link copied', description: 'Share link copied to clipboard' }); }}
+              >
+                <Share2 className="w-3.5 h-3.5" /> Copy Link
+              </Button>
+            </div>
+          )}
+
           <nav className="space-y-0.5">
             {SECTION_IDS.map((sid) => (
               <button
