@@ -135,6 +135,152 @@ export function downloadJson(review: ReviewResult) {
   URL.revokeObjectURL(url);
 }
 
+export async function downloadPdf(review: ReviewResult) {
+  const { jsPDF } = await import("jspdf");
+
+  const pdf = new jsPDF("p", "mm", "a4");
+  const pageWidth = 210;
+  const pageHeight = 297;
+  const margin = 15;
+  const contentWidth = pageWidth - margin * 2;
+  let y = margin;
+
+  const addPage = () => { pdf.addPage(); y = margin; };
+  const checkSpace = (needed: number) => { if (y + needed > pageHeight - margin) addPage(); };
+
+  const heading = (text: string, size: number, spacing = 4) => {
+    checkSpace(size + spacing + 4);
+    pdf.setFontSize(size);
+    pdf.setFont("helvetica", "bold");
+    pdf.text(text, margin, y);
+    y += size * 0.4 + spacing;
+  };
+
+  const body = (text: string, indent = 0) => {
+    pdf.setFontSize(9);
+    pdf.setFont("helvetica", "normal");
+    const lines = pdf.splitTextToSize(text, contentWidth - indent);
+    for (const line of lines) {
+      checkSpace(5);
+      pdf.text(line, margin + indent, y);
+      y += 4.2;
+    }
+  };
+
+  const bullet = (text: string, symbol = "•", indent = 4) => {
+    pdf.setFontSize(9);
+    pdf.setFont("helvetica", "normal");
+    const lines = pdf.splitTextToSize(text, contentWidth - indent - 4);
+    checkSpace(5);
+    pdf.text(symbol, margin + indent, y);
+    for (let i = 0; i < lines.length; i++) {
+      if (i > 0) checkSpace(5);
+      pdf.text(lines[i], margin + indent + 4, y);
+      y += 4.2;
+    }
+  };
+
+  // Title
+  heading(`Article Review: ${review.articleTitle}`, 16, 6);
+
+  // Score & readiness
+  body(`Overall Score: ${review.overallScore}/100  ·  Publish Readiness: ${readinessLabel(review.publishReadiness)}`);
+  y += 2;
+  body(review.editorialVerdict);
+  y += 4;
+
+  // Strengths
+  heading("Strengths", 12);
+  review.strengths.forEach((s) => bullet(s, "✓"));
+  y += 3;
+
+  // Weaknesses
+  heading("Weaknesses", 12);
+  review.weaknesses.forEach((w) => bullet(w, "✗"));
+  y += 3;
+
+  // Inferred Inputs
+  if (review.inferredInputs) {
+    const ii = review.inferredInputs;
+    heading("Inferred Inputs", 12);
+    if (ii.primaryKeyword) bullet(`Primary Keyword: ${ii.primaryKeyword}`);
+    if (ii.searchIntent) bullet(`Search Intent: ${ii.searchIntent}`);
+    if (ii.audienceAssumptions) bullet(`Audience: ${ii.audienceAssumptions}`);
+    if (ii.articleType) bullet(`Article Type: ${ii.articleType}`);
+    y += 3;
+  }
+
+  // Category Scores
+  heading("Category Scores", 12);
+  review.categoryScores.forEach((c) => {
+    bullet(`${c.name}: ${c.score}/${c.maxScore}`);
+  });
+  y += 3;
+
+  // Issues
+  if (review.issues.length > 0) {
+    heading("Issues", 12);
+    (["critical", "important", "optional"] as Severity[]).forEach((sev) => {
+      const items = review.issues.filter((i) => i.severity === sev);
+      if (items.length === 0) return;
+      heading(`${severityLabel(sev)} (${items.length})`, 10, 2);
+      items.forEach((i) => {
+        bullet(`[${severityLabel(i.severity)}] ${i.title} (${i.category}): ${i.description}`, "•", 6);
+        if (i.originalExcerpt) { body(`Original: "${i.originalExcerpt}"`, 12); }
+        if (i.improvedVersion) { body(`Suggested: "${i.improvedVersion}"`, 12); }
+      });
+    });
+    y += 3;
+  }
+
+  // Style guide violations
+  if (review.styleGuideViolations.length > 0) {
+    heading("Style Guide Violations", 12);
+    review.styleGuideViolations.forEach((v) => bullet(`${v.title}: ${v.description}`));
+    y += 3;
+  }
+
+  // Rewrite suggestions
+  if (review.rewriteSuggestions.length > 0) {
+    heading("Rewrite Suggestions", 12);
+    review.rewriteSuggestions.forEach((r) => {
+      bullet(`${r.title}: ${r.description}`);
+      if (r.originalExcerpt) body(`Original: "${r.originalExcerpt}"`, 12);
+      if (r.improvedVersion) body(`Suggested: "${r.improvedVersion}"`, 12);
+    });
+    y += 3;
+  }
+
+  // SEO
+  const seo = review.seoRecommendations;
+  if (seo.titleSuggestions.length > 0 || seo.metaDescription || seo.faqIdeas.length > 0) {
+    heading("SEO Recommendations", 12);
+    if (seo.titleSuggestions.length > 0) {
+      heading("Title Suggestions", 10, 2);
+      seo.titleSuggestions.forEach((t) => bullet(t));
+    }
+    if (seo.metaDescription) { body(`Meta Description: ${seo.metaDescription}`); y += 2; }
+    if (seo.faqIdeas.length > 0) {
+      heading("FAQ Ideas", 10, 2);
+      seo.faqIdeas.forEach((f) => bullet(f));
+    }
+    if (seo.internalLinkingSuggestions.length > 0) {
+      heading("Internal Linking", 10, 2);
+      seo.internalLinkingSuggestions.forEach((l) => bullet(l));
+    }
+    y += 3;
+  }
+
+  // Action Plan
+  if (review.actionPlan.length > 0) {
+    heading("Action Plan", 12);
+    review.actionPlan.forEach((a, i) => bullet(a, `${i + 1}.`));
+  }
+
+  const filename = `review-${review.articleTitle.replace(/[^a-zA-Z0-9]/g, "-").substring(0, 50)}.pdf`;
+  pdf.save(filename);
+}
+
 export function copyShareLink() {
   navigator.clipboard.writeText(window.location.href);
 }

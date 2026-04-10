@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { Download, Share2, Printer, FileJson } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
-import { downloadMarkdown, downloadJson, copyShareLink } from '@/lib/report-export';
+import { downloadMarkdown, downloadJson, downloadPdf, copyShareLink } from '@/lib/report-export';
 import { useToast } from '@/hooks/use-toast';
 import {
   DropdownMenu,
@@ -239,8 +239,8 @@ export default function ReviewDetail() {
                   <DropdownMenuItem onClick={() => { downloadJson(review); toast({ title: 'Downloaded', description: 'JSON report saved' }); }}>
                     <FileJson className="w-3.5 h-3.5 mr-2" /> JSON (.json)
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => window.print()}>
-                    <Printer className="w-3.5 h-3.5 mr-2" /> Print / Save as PDF
+                  <DropdownMenuItem onClick={() => { downloadPdf(review); toast({ title: 'Downloaded', description: 'PDF report saved' }); }}>
+                    <FileText className="w-3.5 h-3.5 mr-2" /> PDF (.pdf)
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
