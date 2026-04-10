@@ -256,7 +256,7 @@ export default function NewReview() {
 
           <div>
             <Label htmlFor="competitor-urls" className="text-xs font-medium text-muted-foreground">Competitor URLs</Label>
-            <Input id="competitor-urls" value={competitorUrls} onChange={(e) => setCompetitorUrls(e.target.value)} placeholder="One URL per line or comma-separated" className="mt-1" />
+            <Textarea id="competitor-urls" value={competitorUrls} onChange={(e) => setCompetitorUrls(e.target.value)} placeholder="One URL per line or comma-separated" className="mt-1" rows={3} />
           </div>
 
           <div>
