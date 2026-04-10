@@ -496,6 +496,17 @@ export default function ReviewDetail() {
                   ))}
                 </div>
               )}
+              {review.seoRecommendations.h1Suggestion && (
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground mb-1">H1 Suggestion</p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm text-foreground flex-1">{review.seoRecommendations.h1Suggestion}</p>
+                    <Button variant="ghost" size="sm" className="text-xs" onClick={() => navigator.clipboard.writeText(review.seoRecommendations.h1Suggestion!)}>
+                      <Copy className="w-3 h-3" />
+                    </Button>
+                  </div>
+                </div>
+              )}
               {review.seoRecommendations.metaDescription && (
                 <div>
                   <p className="text-xs font-semibold text-muted-foreground mb-1">Meta Description</p>
