@@ -95,6 +95,14 @@ export async function fetchAllReviews(): Promise<ReviewRow[]> {
   return (data || []) as unknown as ReviewRow[];
 }
 
+export async function deleteReview(id: string): Promise<void> {
+  const { error } = await supabase
+    .from("article_reviews")
+    .delete()
+    .eq("id", id);
+  if (error) throw new Error(error.message);
+}
+
 export function mapRowToReviewResult(row: ReviewRow): ReviewResult | null {
   if (!row.review_result) return null;
   const r = row.review_result;
@@ -115,6 +123,7 @@ export function mapRowToReviewResult(row: ReviewRow): ReviewResult | null {
     competitorAnalysis: r.competitorAnalysis,
     actionPlan: r.actionPlan ?? [],
     rewriteSuggestions: r.rewriteSuggestions ?? [],
+    legalFlags: r.legalFlags ?? [],
     status: "draft_review",
     createdAt: row.created_at,
     icpSelection: row.icp_selection,
