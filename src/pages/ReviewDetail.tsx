@@ -6,12 +6,12 @@ import { ScoreCircle, ScoreBar } from '@/components/ScoreCircle';
 import { SeverityBadge, ReadinessBadge, StatusBadge } from '@/components/SeverityBadge';
 import { sampleReviews } from '@/lib/sample-data';
 import { fetchReview, mapRowToReviewResult, triggerReview } from '@/lib/api';
-import type { ReviewResult, Severity } from '@/lib/types';
+import type { ReviewResult, Severity, LegalFlag } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import {
   ArrowLeft, Copy, ChevronDown, ChevronRight,
   CheckCircle2, XCircle, Lightbulb, Target, Search, BarChart3,
-  Brain, Eye, BookOpen, Shield, Type, Swords, Zap, FileText, Loader2,
+  Brain, Eye, BookOpen, Shield, Type, Swords, Zap, FileText, Loader2, AlertTriangle,
 } from 'lucide-react';
 import { Download, Share2, Printer, FileJson } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
@@ -31,7 +31,7 @@ import {
 
 const SECTION_IDS = [
   'summary', 'inferred', 'priorities', 'scores', 'issues',
-  'style-guide', 'rewrites', 'seo', 'geo', 'competitors', 'action-plan',
+  'style-guide', 'legal', 'rewrites', 'seo', 'geo', 'competitors', 'action-plan',
 ] as const;
 
 const SECTION_LABELS: Record<string, string> = {
@@ -41,6 +41,7 @@ const SECTION_LABELS: Record<string, string> = {
   scores: 'Scorecards',
   issues: 'Issues',
   'style-guide': 'Style Guide',
+  legal: 'Legal Flags',
   rewrites: 'Rewrites',
   seo: 'SEO',
   geo: 'GEO',
@@ -428,6 +429,40 @@ export default function ReviewDetail() {
                 <Card className="p-4 text-center">
                   <CheckCircle2 className="w-6 h-6 text-success mx-auto mb-2" />
                   <p className="text-sm text-muted-foreground">No style guide violations found</p>
+                </Card>
+              )}
+            </div>
+          </section>
+
+          {/* Legal Flags */}
+          <section id="legal">
+            <h2 className="text-lg font-semibold text-foreground mb-3">Legal Flags</h2>
+            <div className="space-y-2">
+              {(review.legalFlags ?? []).map((flag, i) => (
+                <Card key={i} className="p-4 border-destructive/40 border-2">
+                  <div className="flex items-start gap-3">
+                    <AlertTriangle className="w-4 h-4 text-destructive flex-shrink-0 mt-0.5" />
+                    <div className="space-y-2 flex-1">
+                      <div className="p-3 rounded bg-destructive/5">
+                        <p className="text-xs font-medium text-destructive mb-1">Excerpt</p>
+                        <p className="text-sm text-foreground italic">"{flag.excerpt}"</p>
+                      </div>
+                      <div>
+                        <p className="text-xs font-medium text-destructive mb-0.5">Risk</p>
+                        <p className="text-sm text-muted-foreground">{flag.risk}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs font-medium text-primary mb-0.5">Suggestion</p>
+                        <p className="text-sm text-muted-foreground">{flag.suggestion}</p>
+                      </div>
+                    </div>
+                  </div>
+                </Card>
+              ))}
+              {(!review.legalFlags || review.legalFlags.length === 0) && (
+                <Card className="p-4 text-center">
+                  <CheckCircle2 className="w-6 h-6 text-success mx-auto mb-2" />
+                  <p className="text-sm text-muted-foreground">No legal flags found</p>
                 </Card>
               )}
             </div>
