@@ -1,11 +1,11 @@
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { AppLayout } from '@/components/AppLayout';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ScoreCircle, ScoreBar } from '@/components/ScoreCircle';
 import { SeverityBadge, ReadinessBadge, StatusBadge } from '@/components/SeverityBadge';
 import { sampleReviews } from '@/lib/sample-data';
-import { fetchReview, mapRowToReviewResult, triggerReview } from '@/lib/api';
+import { fetchReview, mapRowToReviewResult, triggerReview, deleteReview } from '@/lib/api';
 import type { ReviewResult, Severity, LegalFlag } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import {
@@ -13,7 +13,7 @@ import {
   CheckCircle2, XCircle, Lightbulb, Target, Search, BarChart3,
   Brain, Eye, BookOpen, Shield, Type, Swords, Zap, FileText, Loader2, AlertTriangle,
 } from 'lucide-react';
-import { Download, Share2, Printer, FileJson } from 'lucide-react';
+import { Download, Share2, Printer, FileJson, Trash2 } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { downloadMarkdown, downloadJson, downloadPdf, copyShareLink } from '@/lib/report-export';
 import { useToast } from '@/hooks/use-toast';
@@ -28,6 +28,17 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 const SECTION_IDS = [
   'summary', 'inferred', 'priorities', 'scores', 'issues',
@@ -107,6 +118,7 @@ function IssueCard({ issue }: { issue: ReviewResult['issues'][0] }) {
 
 export default function ReviewDetail() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [review, setReview] = useState<ReviewResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState<string>('loading');
@@ -115,6 +127,19 @@ export default function ReviewDetail() {
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const hasTriggeredQueuedReviewRef = useRef(false);
   const { toast } = useToast();
+
+  const isSample = sampleReviews.some((s) => s.id === id);
+
+  const handleDelete = async () => {
+    if (!id || isSample) return;
+    try {
+      await deleteReview(id);
+      toast({ title: 'Deleted', description: 'Review has been removed.' });
+      navigate('/reviews');
+    } catch {
+      toast({ title: 'Error', description: 'Failed to delete review.', variant: 'destructive' });
+    }
+  };
 
   useEffect(() => {
     if (!id) return;
@@ -254,6 +279,26 @@ export default function ReviewDetail() {
               >
                 <Share2 className="w-3.5 h-3.5" /> Copy Link
               </Button>
+
+              {!isSample && (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="outline" size="sm" className="w-full justify-start gap-2 text-xs text-destructive hover:text-destructive">
+                      <Trash2 className="w-3.5 h-3.5" /> Delete Review
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete review?</AlertDialogTitle>
+                      <AlertDialogDescription>This will permanently delete this review. This action cannot be undone.</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Delete</AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              )}
             </div>
           )}
 
