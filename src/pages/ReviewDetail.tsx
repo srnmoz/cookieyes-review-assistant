@@ -118,6 +118,7 @@ function IssueCard({ issue }: { issue: ReviewResult['issues'][0] }) {
 
 export default function ReviewDetail() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [review, setReview] = useState<ReviewResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState<string>('loading');
@@ -126,6 +127,19 @@ export default function ReviewDetail() {
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const hasTriggeredQueuedReviewRef = useRef(false);
   const { toast } = useToast();
+
+  const isSample = sampleReviews.some((s) => s.id === id);
+
+  const handleDelete = async () => {
+    if (!id || isSample) return;
+    try {
+      await deleteReview(id);
+      toast({ title: 'Deleted', description: 'Review has been removed.' });
+      navigate('/reviews');
+    } catch {
+      toast({ title: 'Error', description: 'Failed to delete review.', variant: 'destructive' });
+    }
+  };
 
   useEffect(() => {
     if (!id) return;
