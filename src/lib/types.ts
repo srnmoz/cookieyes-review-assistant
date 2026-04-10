@@ -86,6 +86,12 @@ export interface GeoRecommendation {
   missingQuoteFriendly: string[];
 }
 
+export interface LegalFlag {
+  excerpt: string;
+  risk: string;
+  suggestion: string;
+}
+
 export interface ReviewResult {
   id: string;
   articleTitle: string;
@@ -103,6 +109,7 @@ export interface ReviewResult {
   competitorAnalysis?: CompetitorAnalysis;
   actionPlan: string[];
   rewriteSuggestions: ReviewIssue[];
+  legalFlags?: LegalFlag[];
   status: ReviewStatus;
   createdAt: string;
   icpSelection: IcpSelection;

@@ -134,6 +134,30 @@ SCORING: Rate each of the 13 categories from 0-10. Overall score = average of al
 CATEGORIES (use these exact IDs):
 icp, audience, intent, seo, structure, geo, ai_visibility, topical, eeat, readability, style_guide, differentiation, conversion
 
+CATEGORY RUBRICS (score each 0-10 with these exact criteria):
+
+- icp: Does the article speak to the ICP's specific pain points and role? Penalise generic 'any business' framing. Reward ICP-specific examples and language.
+- audience: Is the tone, vocabulary, and depth right for the reader's expertise level?
+- intent: Does the content fully satisfy the search intent? Penalise intent mismatch heavily.
+- seo: Keyword placement in H1/H2s, meta signals, internal linking opportunities, FAQ coverage.
+- structure: Logical flow, subheadings every 200-300 words, scannable for skimmers AND deep readers.
+- geo: Answer-first paragraphs, quotable standalone sentences, defined key terms, extractable FAQ answers. Would an AI summariser find clear answers here?
+- ai_visibility: Is the article structured so LLMs can cite it? Clear claims, definitions, comparisons.
+- topical: Does it cover the topic comprehensively? Are there obvious gaps a competitor would cover?
+- eeat: Are claims sourced or backed by CookieYes data/expertise? Original insight beyond a Wikipedia summary?
+- readability: Flesch score equivalent, sentence length, active voice, paragraph length (max 5 sentences).
+- style_guide: British English, Oxford comma, sentence-case H2s, no passive voice, correct number formatting.
+- differentiation: Does this article say something competitors don't? Is there a unique angle or original data?
+- conversion: Is there a clear CTA matching the stated ctaGoal? Is it placed contextually, not just appended?
+
+ICP SCORING RULES:
+- Digital Agencies ICP: penalise content that ignores multi-client management, white-labelling, or agency compliance workflows.
+- SMB/Regular Users ICP: penalise jargon. Reward plain-English step-by-step guidance.
+
+ISSUE RULES: Surface 6-12 issues. Every critical and important issue MUST include an originalExcerpt (verbatim from the article) and an improvedVersion. Never flag an issue without evidence from the article text. Be brutal and specific — vague feedback like 'improve the introduction' is not acceptable.
+
+TONE: You are a brutally honest senior editor. Do not soften feedback. If the article is mediocre, say so. Score honestly — a score above 75 should be rare and earned.
+
 SEVERITY LEVELS: critical, important, optional
 
 PUBLISH READINESS:
@@ -207,7 +231,8 @@ function buildUserPrompt(input: {
   competitorNotes?: string;
   reviewerNotes?: string;
 }) {
-  let prompt = `Review this article:\n\nTITLE: ${input.title}\n\n`;
+  const wordCount = input.articleContent.split(/\s+/).length;
+  let prompt = `Review this article:\n\nTITLE: ${input.title}\nARTICLE LENGTH: ~${wordCount} words. Review depth should match — for articles over 2000 words, surface issues across the full article, not just the introduction.\n\n`;
 
   const icp = input.icpSelection;
   const icpParts: string[] = [];
@@ -233,6 +258,7 @@ function buildUserPrompt(input: {
 }
 
 async function runStructuredReview(review: ReviewRow) {
+  const wordCount = review.article_content.split(/\s+/).length;
   const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
   if (!LOVABLE_API_KEY) {
@@ -423,6 +449,19 @@ const REVIEW_TOOL = {
           },
         },
         actionPlan: { type: "array", items: { type: "string" }, description: "Top 10 edits in priority order" },
+        legalFlags: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              excerpt: { type: "string" },
+              risk: { type: "string" },
+              suggestion: { type: "string" },
+            },
+            required: ["excerpt", "risk", "suggestion"],
+          },
+          description: "Any statements that could be interpreted as legal advice or make unqualified legal claims. CookieYes content touches GDPR/privacy law — flag aggressively.",
+        },
       },
       required: [
         "overallScore", "publishReadiness", "editorialVerdict", "strengths", "weaknesses",
