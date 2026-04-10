@@ -1,11 +1,11 @@
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { AppLayout } from '@/components/AppLayout';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ScoreCircle, ScoreBar } from '@/components/ScoreCircle';
 import { SeverityBadge, ReadinessBadge, StatusBadge } from '@/components/SeverityBadge';
 import { sampleReviews } from '@/lib/sample-data';
-import { fetchReview, mapRowToReviewResult, triggerReview } from '@/lib/api';
+import { fetchReview, mapRowToReviewResult, triggerReview, deleteReview } from '@/lib/api';
 import type { ReviewResult, Severity, LegalFlag } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import {
@@ -13,7 +13,7 @@ import {
   CheckCircle2, XCircle, Lightbulb, Target, Search, BarChart3,
   Brain, Eye, BookOpen, Shield, Type, Swords, Zap, FileText, Loader2, AlertTriangle,
 } from 'lucide-react';
-import { Download, Share2, Printer, FileJson } from 'lucide-react';
+import { Download, Share2, Printer, FileJson, Trash2 } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { downloadMarkdown, downloadJson, downloadPdf, copyShareLink } from '@/lib/report-export';
 import { useToast } from '@/hooks/use-toast';
@@ -28,6 +28,17 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 const SECTION_IDS = [
   'summary', 'inferred', 'priorities', 'scores', 'issues',
