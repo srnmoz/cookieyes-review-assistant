@@ -6,24 +6,48 @@ import { Button } from '@/components/ui/button';
 import { ScoreCircle } from '@/components/ScoreCircle';
 import { StatusBadge, ReadinessBadge } from '@/components/SeverityBadge';
 import { sampleReviews } from '@/lib/sample-data';
-import { fetchAllReviews, mapRowToReviewResult } from '@/lib/api';
+import { fetchAllReviews, mapRowToReviewResult, deleteReview } from '@/lib/api';
 import type { ReviewResult } from '@/lib/types';
-import { FilePlus, Loader2 } from 'lucide-react';
+import { FilePlus, Loader2, Trash2 } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 export default function SavedReviews() {
   const [dbReviews, setDbReviews] = useState<ReviewResult[]>([]);
   const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
 
-  useEffect(() => {
-    fetchAllReviews().then((rows) => {
-      const mapped = rows
-        .filter((r) => r.status === 'completed')
-        .map(mapRowToReviewResult)
-        .filter(Boolean) as ReviewResult[];
-      setDbReviews(mapped);
-      setLoading(false);
-    });
-  }, []);
+  const loadReviews = async () => {
+    const rows = await fetchAllReviews();
+    const mapped = rows
+      .filter((r) => r.status === 'completed')
+      .map(mapRowToReviewResult)
+      .filter(Boolean) as ReviewResult[];
+    setDbReviews(mapped);
+    setLoading(false);
+  };
+
+  useEffect(() => { loadReviews(); }, []);
+
+  const handleDelete = async (id: string, title: string) => {
+    try {
+      await deleteReview(id);
+      setDbReviews((prev) => prev.filter((r) => r.id !== id));
+      toast({ title: 'Deleted', description: `"${title}" has been removed.` });
+    } catch {
+      toast({ title: 'Error', description: 'Failed to delete review.', variant: 'destructive' });
+    }
+  };
 
   const allReviews = [...dbReviews, ...sampleReviews];
 
@@ -46,25 +70,51 @@ export default function SavedReviews() {
           </div>
         ) : (
           <div className="space-y-3">
-            {allReviews.map((review) => (
-              <Link key={review.id} to={`/review/${review.id}`}>
-                <Card className="p-5 hover:border-primary/30 transition-colors cursor-pointer">
+            {allReviews.map((review) => {
+              const isSample = sampleReviews.some((s) => s.id === review.id);
+              return (
+                <Card key={review.id} className="p-5 hover:border-primary/30 transition-colors">
                   <div className="flex items-center gap-5">
-                    <ScoreCircle score={review.overallScore} size="sm" />
-                    <div className="flex-1 min-w-0">
-                      <h3 className="text-sm font-semibold text-foreground truncate">{review.articleTitle}</h3>
-                      <div className="flex items-center gap-2 mt-2">
-                        <ReadinessBadge readiness={review.publishReadiness} />
-                        <StatusBadge status={review.status} />
-                        <span className="text-xs text-muted-foreground">
-                          {new Date(review.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
-                        </span>
+                    <Link to={`/review/${review.id}`} className="flex items-center gap-5 flex-1 min-w-0 cursor-pointer">
+                      <ScoreCircle score={review.overallScore} size="sm" />
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-sm font-semibold text-foreground truncate">{review.articleTitle}</h3>
+                        <div className="flex items-center gap-2 mt-2">
+                          <ReadinessBadge readiness={review.publishReadiness} />
+                          <StatusBadge status={review.status} />
+                          <span className="text-xs text-muted-foreground">
+                            {new Date(review.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                          </span>
+                        </div>
                       </div>
-                    </div>
+                    </Link>
+                    {!isSample && (
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive flex-shrink-0">
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete review?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This will permanently delete "{review.articleTitle}". This action cannot be undone.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => handleDelete(review.id, review.articleTitle)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                              Delete
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    )}
                   </div>
                 </Card>
-              </Link>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
