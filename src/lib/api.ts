@@ -96,6 +96,15 @@ export async function fetchAllReviews(): Promise<ReviewRow[]> {
   return (data || []) as unknown as ReviewRow[];
 }
 
+export async function rerunReview(id: string): Promise<void> {
+  const { error } = await supabase
+    .from("article_reviews")
+    .update({ status: "queued", review_result: null, error_message: null } as any)
+    .eq("id", id);
+  if (error) throw new Error(error.message);
+  await triggerReview(id);
+}
+
 export async function deleteReview(id: string): Promise<void> {
   const { error } = await supabase
     .from("article_reviews")
