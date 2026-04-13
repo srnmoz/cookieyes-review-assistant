@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { ScoreCircle, ScoreBar } from '@/components/ScoreCircle';
 import { SeverityBadge, ReadinessBadge, StatusBadge } from '@/components/SeverityBadge';
 import { sampleReviews } from '@/lib/sample-data';
-import { fetchReview, mapRowToReviewResult, triggerReview, deleteReview } from '@/lib/api';
+import { fetchReview, mapRowToReviewResult, triggerReview, deleteReview, rerunReview } from '@/lib/api';
 import type { ReviewResult, Severity, LegalFlag } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import {
@@ -13,7 +13,7 @@ import {
   CheckCircle2, XCircle, Lightbulb, Target, Search, BarChart3,
   Brain, Eye, BookOpen, Shield, Type, Swords, Zap, FileText, Loader2, AlertTriangle,
 } from 'lucide-react';
-import { Download, Share2, Printer, FileJson, Trash2 } from 'lucide-react';
+import { Download, Share2, Printer, FileJson, Trash2, RefreshCw } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { downloadMarkdown, downloadJson, downloadPdf, copyShareLink } from '@/lib/report-export';
 import { useToast } from '@/hooks/use-toast';
@@ -279,6 +279,37 @@ export default function ReviewDetail() {
               >
                 <Share2 className="w-3.5 h-3.5" /> Copy Link
               </Button>
+
+              {!isSample && (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="outline" size="sm" className="w-full justify-start gap-2 text-xs">
+                      <RefreshCw className="w-3.5 h-3.5" /> Re-review
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Re-review article?</AlertDialogTitle>
+                      <AlertDialogDescription>This will overwrite the current review result. Continue?</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={async () => {
+                        try {
+                          await rerunReview(id!);
+                          setReview(null);
+                          setStatus('queued');
+                          setLoading(true);
+                          hasTriggeredQueuedReviewRef.current = false;
+                          toast({ title: 'Re-review started', description: 'The article is being re-analysed.' });
+                        } catch {
+                          toast({ title: 'Error', description: 'Failed to start re-review.', variant: 'destructive' });
+                        }
+                      }}>Re-review</AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              )}
 
               {!isSample && (
                 <AlertDialog>
