@@ -131,6 +131,7 @@ export function mapRowToReviewResult(row: ReviewRow): ReviewResult | null {
     seoRecommendations: r.seoRecommendations ?? { titleSuggestions: [], faqIdeas: [], schemaOpportunities: [], internalLinkingSuggestions: [] },
     geoRecommendations: r.geoRecommendations ?? { missingSummaryBlocks: [], missingFaqs: [], missingDefinitions: [], missingComparisons: [], missingAnswerFirst: [], missingQuoteFriendly: [] },
     competitorAnalysis: r.competitorAnalysis,
+    competitorUrls: (row as any).competitor_urls ?? [],
     actionPlan: r.actionPlan ?? [],
     rewriteSuggestions: r.rewriteSuggestions ?? [],
     legalFlags: r.legalFlags ?? [],

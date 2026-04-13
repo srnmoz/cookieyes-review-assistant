@@ -107,6 +107,7 @@ export interface ReviewResult {
   seoRecommendations: SeoRecommendation;
   geoRecommendations: GeoRecommendation;
   competitorAnalysis?: CompetitorAnalysis;
+  competitorUrls?: string[];
   actionPlan: string[];
   rewriteSuggestions: ReviewIssue[];
   legalFlags?: LegalFlag[];
