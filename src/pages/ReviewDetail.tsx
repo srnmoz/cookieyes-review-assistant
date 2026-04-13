@@ -11,7 +11,7 @@ import { cn } from '@/lib/utils';
 import {
   ArrowLeft, Copy, ChevronDown, ChevronRight,
   CheckCircle2, XCircle, Lightbulb, Target, Search, BarChart3,
-  Brain, Eye, BookOpen, Shield, Type, Swords, Zap, FileText, Loader2, AlertTriangle,
+  Brain, Eye, BookOpen, Shield, Type, Swords, Zap, FileText, Loader2, AlertTriangle, ExternalLink,
 } from 'lucide-react';
 import { Download, Share2, Printer, FileJson, Trash2, RefreshCw } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
