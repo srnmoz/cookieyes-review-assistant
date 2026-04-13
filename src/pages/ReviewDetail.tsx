@@ -11,7 +11,7 @@ import { cn } from '@/lib/utils';
 import {
   ArrowLeft, Copy, ChevronDown, ChevronRight,
   CheckCircle2, XCircle, Lightbulb, Target, Search, BarChart3,
-  Brain, Eye, BookOpen, Shield, Type, Swords, Zap, FileText, Loader2, AlertTriangle,
+  Brain, Eye, BookOpen, Shield, Type, Swords, Zap, FileText, Loader2, AlertTriangle, ExternalLink,
 } from 'lucide-react';
 import { Download, Share2, Printer, FileJson, Trash2, RefreshCw } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
@@ -633,6 +633,26 @@ export default function ReviewDetail() {
           {review.competitorAnalysis && (
             <section id="competitors">
               <h2 className="text-lg font-semibold text-foreground mb-3">Competitor Gap Analysis</h2>
+              {review.competitorUrls && review.competitorUrls.length > 0 && (
+                <Card className="p-4 mb-3">
+                  <p className="text-xs font-semibold text-muted-foreground mb-2">Compared Against</p>
+                  <div className="flex flex-wrap gap-2">
+                    {review.competitorUrls.map((url, i) => (
+                      <a
+                        key={i}
+                        href={url.startsWith('http') ? url : `https://${url}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-xs text-primary hover:underline truncate max-w-[260px]"
+                        title={url}
+                      >
+                        <ExternalLink className="h-3 w-3 shrink-0" />
+                        {url.replace(/^https?:\/\//, '').replace(/\/$/, '')}
+                      </a>
+                    ))}
+                  </div>
+                </Card>
+              )}
               <Card className="p-5 space-y-4">
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-semibold text-muted-foreground">Overall:</span>
