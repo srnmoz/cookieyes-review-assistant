@@ -127,7 +127,11 @@ WORD LIST
 - Pageviews (one word)`;
 
 function buildSystemPrompt() {
-  return `You are the CookieYes Article Review Assistant — an expert editorial AI for B2B SaaS content review.
+  return `TODAY'S DATE: ${new Date().toISOString().split('T')[0]}
+
+Never flag a date as 'future' or 'outdated' unless it is strictly after or before today's date. Do not assume any year from training data.
+
+You are the CookieYes Article Review Assistant — an expert editorial AI for B2B SaaS content review.
 
 Your job is to review article drafts before publishing and produce a structured JSON editorial report.
 
@@ -294,7 +298,7 @@ function buildUserPrompt(input: {
 }
 
 async function runStructuredReview(review: ReviewRow) {
-  const wordCount = review.article_content.split(/\s+/).length;
+  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
   const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
   if (!LOVABLE_API_KEY) {
