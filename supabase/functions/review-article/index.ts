@@ -17,6 +17,7 @@ interface ReviewRow {
   id: string;
   title: string;
   article_content: string;
+  content_source: string;
   icp_selection: Record<string, unknown>;
   primary_keyword: string | null;
   secondary_keywords: string[] | null;
@@ -42,8 +43,12 @@ GRAMMAR BASICS
 - Be concise with short words and sentences
 - Be specific, avoid vague language
 
-NUMBERS
-- Spell out 1-10, use numerals for 11+
+NUMBERS (STRICT)
+- Spell out one through ten in prose (one, five, ten)
+- Use numerals for 11 and above (11, 15, 25, 100)
+- NEVER flag a numeral like 15, 25, or 100 as needing to be spelled out — that is correct style
+- Only flag as a violation if a number from 1-10 is written as a digit in prose (e.g. '5 steps' should be 'five steps')
+- List markers and numbered steps are exempt from this rule
 - Spell out numbers at start of sentence
 - Use commas for 1,000+
 - Use % symbol (64%)
@@ -248,6 +253,7 @@ async function updateReviewRecord(
 function buildUserPrompt(input: {
   title: string;
   articleContent: string;
+  contentSource: string;
   icpSelection: Record<string, unknown>;
   primaryKeyword?: string;
   secondaryKeywords?: string[];
@@ -259,6 +265,10 @@ function buildUserPrompt(input: {
 }) {
   const wordCount = input.articleContent.split(/\s+/).length;
   let prompt = `Review this article:\n\nTITLE: ${input.title}\nARTICLE LENGTH: ~${wordCount} words. Review depth should match — for articles over 2000 words, surface issues across the full article, not just the introduction.\n\n`;
+
+  if (input.contentSource === 'upload') {
+    prompt += `NOTE: This article was parsed from an uploaded file (PDF or DOCX). Hyperlinks are stripped during text extraction and will not appear in the content below. Do NOT flag missing internal links, external links, or anchor text as issues — the author confirms links exist in the published document. Only flag link strategy if anchor text is clearly absent or misleading.\n\n`;
+  }
 
   const icp = input.icpSelection;
   const icpParts: string[] = [];
@@ -306,6 +316,7 @@ async function runStructuredReview(review: ReviewRow) {
           content: buildUserPrompt({
             title: review.title,
             articleContent: review.article_content,
+            contentSource: review.content_source,
             icpSelection: review.icp_selection,
             primaryKeyword: review.primary_keyword ?? undefined,
             secondaryKeywords: review.secondary_keywords ?? undefined,
