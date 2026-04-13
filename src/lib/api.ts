@@ -70,6 +70,7 @@ export interface ReviewRow {
   id: string;
   title: string;
   status: string;
+  content_source: string;
   review_result: ReviewResult | null;
   icp_selection: IcpSelection;
   created_at: string;
