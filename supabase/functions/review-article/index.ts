@@ -271,7 +271,7 @@ function buildUserPrompt(input: {
   let prompt = `Review this article:\n\nTITLE: ${input.title}\nARTICLE LENGTH: ~${wordCount} words. Review depth should match — for articles over 2000 words, surface issues across the full article, not just the introduction.\n\n`;
 
   if (input.contentSource === 'upload') {
-    prompt += `NOTE: This article was parsed from an uploaded file (PDF or DOCX). Hyperlinks are stripped during text extraction and will not appear in the content below. Do NOT flag missing internal links, external links, or anchor text as issues — the author confirms links exist in the published document. Only flag link strategy if anchor text is clearly absent or misleading.\n\n`;
+    prompt += `NOTE: This article was parsed from an uploaded file (PDF or DOCX). The following are stripped during text extraction and will NOT appear in the content below: hyperlinks, images, alt text, embedded media, and visual formatting. Do NOT flag any of the following as issues — the author confirms they exist in the live published document:\n- Missing internal or external links\n- Missing anchor text\n- Missing images or figures\n- Missing alt text\n- Missing visual breaks or media\nOnly flag link or image strategy if the surrounding text itself is clearly broken or misleading without the asset.\n\n`;
   }
 
   const icp = input.icpSelection;
