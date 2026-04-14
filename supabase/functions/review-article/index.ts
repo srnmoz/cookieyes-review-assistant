@@ -568,7 +568,9 @@ Deno.serve(async (req) => {
       return jsonResponse({ success: true, reviewId, status: "completed", message: "Review already completed" });
     }
 
-    if (review.status === "processing") {
+    const forceRerun = typeof body?.force === 'boolean' ? body.force : false;
+
+    if (review.status === "processing" && !forceRerun) {
       return jsonResponse({ success: true, reviewId, status: "processing", message: "Review is already processing" }, 202);
     }
 

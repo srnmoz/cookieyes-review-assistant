@@ -124,7 +124,7 @@ export default function ReviewDetail() {
   const [status, setStatus] = useState<string>('loading');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [activeSection, setActiveSection] = useState('summary');
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  
   const hasTriggeredQueuedReviewRef = useRef(false);
   const { toast } = useToast();
 
@@ -170,15 +170,8 @@ export default function ReviewDetail() {
           console.error('Review trigger error:', err);
         });
       }
-      if (row.status === 'processing') {
-        const elapsed = Date.now() - new Date(row.created_at).getTime();
-        if (elapsed > 180000) {
-          setStatus('failed');
-          setErrorMessage('Review timed out after 3 minutes. Please try re-reviewing.');
-          setLoading(false);
-          return;
-        }
-      }
+
+
 
       if (row.status === 'completed') {
         const mapped = mapRowToReviewResult(row);
@@ -192,9 +185,11 @@ export default function ReviewDetail() {
 
     let delay = 3000;
     let timeoutId: ReturnType<typeof setTimeout>;
+    let cancelled = false;
 
     const schedulePoll = () => {
       timeoutId = setTimeout(async () => {
+        if (cancelled) return;
         await poll();
         delay = Math.min(delay * 1.5, 15000);
         schedulePoll();
@@ -204,7 +199,10 @@ export default function ReviewDetail() {
     poll();
     schedulePoll();
 
-    return () => clearTimeout(timeoutId);
+    return () => {
+      cancelled = true;
+      clearTimeout(timeoutId);
+    };
   }, [id]);
 
   if (loading || status === 'queued' || status === 'processing') {
@@ -646,7 +644,7 @@ export default function ReviewDetail() {
           </section>
 
           {/* Competitor Analysis */}
-          {review.competitorAnalysis && (
+          {(review.competitorAnalysis || (review.competitorUrls && review.competitorUrls.length > 0)) && (
             <section id="competitors">
               <h2 className="text-lg font-semibold text-foreground mb-3">Competitor Gap Analysis</h2>
               {review.competitorUrls && review.competitorUrls.length > 0 && (

@@ -58,9 +58,9 @@ export interface TriggerReviewResponse {
   message?: string;
 }
 
-export async function triggerReview(reviewId: string): Promise<TriggerReviewResponse> {
+export async function triggerReview(reviewId: string, force = false): Promise<TriggerReviewResponse> {
   const { data, error } = await supabase.functions.invoke("review-article", {
-    body: { reviewId },
+    body: { reviewId, force },
   });
   if (error) throw new Error(error.message);
   return (data ?? { success: true, reviewId, status: "processing" }) as TriggerReviewResponse;
@@ -75,6 +75,7 @@ export interface ReviewRow {
   icp_selection: IcpSelection;
   created_at: string;
   error_message: string | null;
+  competitor_urls: string[] | null;
 }
 
 export async function fetchReview(id: string): Promise<ReviewRow | null> {
@@ -102,7 +103,7 @@ export async function rerunReview(id: string): Promise<void> {
     .update({ status: "queued", review_result: null, error_message: null } as any)
     .eq("id", id);
   if (error) throw new Error(error.message);
-  await triggerReview(id);
+  await triggerReview(id, true);
 }
 
 export async function deleteReview(id: string): Promise<void> {
@@ -131,7 +132,7 @@ export function mapRowToReviewResult(row: ReviewRow): ReviewResult | null {
     seoRecommendations: r.seoRecommendations ?? { titleSuggestions: [], faqIdeas: [], schemaOpportunities: [], internalLinkingSuggestions: [] },
     geoRecommendations: r.geoRecommendations ?? { missingSummaryBlocks: [], missingFaqs: [], missingDefinitions: [], missingComparisons: [], missingAnswerFirst: [], missingQuoteFriendly: [] },
     competitorAnalysis: r.competitorAnalysis,
-    competitorUrls: (row as any).competitor_urls ?? [],
+    competitorUrls: row.competitor_urls ?? [],
     actionPlan: r.actionPlan ?? [],
     rewriteSuggestions: r.rewriteSuggestions ?? [],
     legalFlags: r.legalFlags ?? [],
