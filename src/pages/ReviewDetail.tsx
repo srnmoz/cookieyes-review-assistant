@@ -170,7 +170,17 @@ export default function ReviewDetail() {
           console.error('Review trigger error:', err);
         });
       }
+if (row.status === 'processing') {
+  const elapsed = Date.now() - new Date(row.created_at).getTime();
+  if (elapsed > 180000) {
+    setStatus('failed');
+    setErrorMessage('Review timed out after 3 minutes. Please try re-reviewing.');
+    setLoading(false);
+    return;
+  }
+}
 
+if (row.status === 'completed') {
       if (row.status === 'completed') {
         const mapped = mapRowToReviewResult(row);
         if (mapped) setReview(mapped);
@@ -183,12 +193,21 @@ export default function ReviewDetail() {
       }
     };
 
-    poll();
-    pollRef.current = setInterval(poll, 3000);
+  let delay = 3000;
+let timeoutId: ReturnType<typeof setTimeout>;
 
-    return () => {
-      if (pollRef.current) clearInterval(pollRef.current);
-    };
+const schedulePoll = () => {
+  timeoutId = setTimeout(async () => {
+    await poll();
+    delay = Math.min(delay * 1.5, 15000);
+    schedulePoll();
+  }, delay);
+};
+
+poll();
+schedulePoll();
+
+return () => clearTimeout(timeoutId);
   }, [id]);
 
   if (loading || status === 'queued' || status === 'processing') {
