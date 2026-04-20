@@ -406,6 +406,9 @@ export default function ReviewDetail() {
             </Card>
           </section>
 
+          {/* Framework Coverage */}
+          <FrameworkCoverage review={review} />
+
           {/* Inferred Inputs */}
           <section id="inferred">
             <h2 className="text-lg font-semibold text-foreground mb-3">Inferred Inputs</h2>
