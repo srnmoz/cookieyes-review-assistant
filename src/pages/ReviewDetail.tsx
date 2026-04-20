@@ -116,6 +116,56 @@ function IssueCard({ issue }: { issue: ReviewResult['issues'][0] }) {
   );
 }
 
+const FRAMEWORK_DIMENSIONS: { key: string; label: string; categoryIds: string[]; icon: typeof Target }[] = [
+  { key: 'seo', label: 'SEO Optimization', categoryIds: ['seo', 'intent'], icon: BarChart3 },
+  { key: 'quality', label: 'Content Quality', categoryIds: ['readability', 'eeat', 'style_guide'], icon: Type },
+  { key: 'depth', label: 'Content Depth', categoryIds: ['topical', 'differentiation'], icon: BookOpen },
+  { key: 'flow', label: 'Flow & Structure', categoryIds: ['structure', 'readability'], icon: FileText },
+  { key: 'geo', label: 'GEO / AEO / AIO', categoryIds: ['geo', 'ai_visibility'], icon: Brain },
+];
+
+function FrameworkCoverage({ review }: { review: ReviewResult }) {
+  const byId = new Map(review.categoryScores.map((c) => [c.id, c]));
+
+  const dimensions = FRAMEWORK_DIMENSIONS.map((dim) => {
+    const cats = dim.categoryIds.map((id) => byId.get(id)).filter(Boolean) as ReviewResult['categoryScores'];
+    if (cats.length === 0) return null;
+    const totalScore = cats.reduce((sum, c) => sum + c.score, 0);
+    const totalMax = cats.reduce((sum, c) => sum + c.maxScore, 0);
+    const pct = totalMax > 0 ? Math.round((totalScore / totalMax) * 100) : 0;
+    const takeaway = cats[0].missing[0] || cats[0].working[0] || cats[0].whyItMatters || '—';
+    const tone = pct >= 75 ? 'success' : pct >= 50 ? 'warning' : 'destructive';
+    return { ...dim, pct, takeaway, tone };
+  }).filter(Boolean) as Array<typeof FRAMEWORK_DIMENSIONS[0] & { pct: number; takeaway: string; tone: string }>;
+
+  if (dimensions.length === 0) return null;
+
+  return (
+    <section id="framework">
+      <h2 className="text-lg font-semibold text-foreground mb-3">Framework Coverage</h2>
+      <Card className="p-5">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+          {dimensions.map((d) => {
+            const Icon = d.icon;
+            const toneColor =
+              d.tone === 'success' ? 'text-success' : d.tone === 'warning' ? 'text-warning' : 'text-destructive';
+            return (
+              <div key={d.key} className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Icon className={cn('w-4 h-4', toneColor)} />
+                  <p className="text-xs font-semibold text-foreground">{d.label}</p>
+                </div>
+                <p className={cn('text-lg font-bold', toneColor)}>{d.pct}%</p>
+                <p className="text-xs text-muted-foreground line-clamp-3">{d.takeaway}</p>
+              </div>
+            );
+          })}
+        </div>
+      </Card>
+    </section>
+  );
+}
+
 export default function ReviewDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
