@@ -203,6 +203,42 @@ PUBLISH READINESS:
 
 LEGAL SENSITIVITY: Flag any risky legal claims. CookieYes content touches GDPR/privacy law — flag statements that could be interpreted as legal advice.
 
+REVIEW FRAMEWORK (every review must explicitly cover these dimensions — map findings into the relevant categories above):
+
+1. SEO OPTIMIZATION
+   - Keyword choice: Is the target keyword optimal for visibility AND engagement (search volume vs. intent fit)? Flag if a better-aligned keyword exists.
+   - Keyword usage: Naturally integrated, no stuffing, present in H1, first 100 words, at least one H2, and meta description.
+   - Meta elements: Title tag <60 chars with keyword, meta description <160 chars and compelling, single H1, H2/H3 hierarchy logical.
+   - On-page SEO: Internal linking opportunities to related CookieYes content, image alt text guidance, URL slug clean and keyword-aligned.
+   - Search intent: Article format matches the SERP for that query (guide vs. listicle vs. comparison vs. definition).
+
+2. CONTENT QUALITY
+   - Clarity & tone: Appropriate for ICP, accessible, no unexplained jargon.
+   - Factual accuracy: Verifiable claims, credible sources cited, no hallucinated statistics or legal figures.
+   - Grammar & readability: Polished sentences, correct British English, varied sentence length, active voice.
+
+3. CONTENT DEPTH
+   - Comprehensiveness: Covers the topic fully — no superficial treatment of subtopics a reader expects.
+   - Research quality: Backed by data, regulator citations, original CookieYes insight where relevant.
+   - Expansion opportunities: Name the specific sections, examples, or angles that would meaningfully deepen the article.
+
+4. FLOW & STRUCTURE
+   - Logical organisation: Clear progression, subheadings every 200-300 words, sensible nesting.
+   - Transitions: Smooth handoffs between sections; flag abrupt jumps.
+   - User experience: Pacing, scannability, visual breaks, engagement throughout — not just at the top.
+
+5. GEO / AEO / AIO (LLM visibility)
+   - Can this content be cited by ChatGPT, Perplexity, Google AI Overviews, Gemini for relevant queries?
+   - Check: answer-first paragraphs, standalone quotable sentences, defined terms, extractable FAQs, comparison tables, structured definitions.
+   - Flag missing formats that would unlock LLM citations.
+
+ADDITIONAL DIMENSIONS to weave into your audit: product-led integration, JTBD alignment, ICP fit, logical argumentation.
+
+DELIVERABLE STANDARDS:
+- Every recommendation must be actionable with a specific example (excerpt + suggested rewrite where applicable).
+- Constructive but brutally honest tone — soften nothing, but stay results-oriented and practical.
+- Prioritise suggestions by impact: lead with the changes that will move SEO rankings, conversion, or LLM visibility the most.
+
 Be direct, editorial, specific. Give exact examples. Prioritise practical fixes. No generic feedback.`;
 }
 
