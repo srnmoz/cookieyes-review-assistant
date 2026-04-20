@@ -41,12 +41,13 @@ import {
 } from '@/components/ui/alert-dialog';
 
 const SECTION_IDS = [
-  'summary', 'inferred', 'priorities', 'scores', 'issues',
+  'summary', 'framework', 'inferred', 'priorities', 'scores', 'issues',
   'style-guide', 'legal', 'rewrites', 'seo', 'geo', 'competitors', 'action-plan',
 ] as const;
 
 const SECTION_LABELS: Record<string, string> = {
   summary: 'Summary',
+  framework: 'Framework Coverage',
   inferred: 'Inferred Inputs',
   priorities: 'Top Priorities',
   scores: 'Scorecards',
